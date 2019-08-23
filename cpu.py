@@ -13,6 +13,7 @@ class CPU:
         self.ram = [0] * 256  # memory is a list of 256 zeroes
         self.register = [0] * 8  # 8 registers
         self.pc = 0  # Program Counter, points to currently-executing instruction
+        self.fl = 0  # flags
 
     # In `CPU`, add method `ram_read()` and `ram_write()`
     # that access the RAM inside the `CPU` object.
@@ -72,6 +73,19 @@ class CPU:
         # elif op == "SUB": etc
         elif op == "MUL":
             self.register[reg_a] *= self.register[reg_b]
+        elif op == "CMP":
+            # Compare the values in two registers, registerA and registerB
+            # * If they are equal, set the Equal `E` flag to 1, otherwise set it to 0.
+            if self.register[reg_a] == self.register[reg_b]:
+                self.fl = 0b00000001  # 0b00000LGE
+            # * If registerA is less than registerB, set the Less-than `L` flag to 1,
+            # otherwise set it to 0.
+            elif self.register[reg_a] < self.register[reg_b]:
+                self.fl = 0b00000100  # 0b00000LGE
+            # * If registerA is greater than registerB, set the Greater-than `G` flag
+            # to 1, otherwise set it to 0.
+            elif self.register[reg_a] > self.register[reg_b]:
+                self.fl = 0b00000010  # 0b00000LGE
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -102,6 +116,10 @@ class CPU:
         PRN = 0b01000111
         HLT = 0b00000001
         MUL = 0b10100010
+        CMP = 0b10100111
+        JMP = 0b01010100
+        JEQ = 0b01010101
+        JNE = 0b01010110
 
         running = True
 
@@ -128,14 +146,34 @@ class CPU:
             elif IR == MUL:
                 self.alu("MUL", operand_a, operand_b)
                 self.pc += 3
+            elif IR == CMP:
+                self.alu("CMP", operand_a, operand_b)
+                self.pc += 3
+            # JMP register
+            # Jump to the address stored in the given register.
+            # Set the `PC` to the address stored in the given register.
+            # JMP  01010100 00000rrr
+            elif IR == JMP:
+                self.pc = self.register[operand_a]
+            # JEQ register
+            # If 'equal' flag is set (true), jump to the address stored in the given register.
+            # JEQ  01010101 00000rrr
+            elif IR == JEQ:
+                if self.fl == 0b00000001:
+                    self.pc = self.register[operand_a]
+                else:
+                    self.pc += 2
+            # JNE register
+            # If E flag is clear (false, 0),
+            # jump to the address stored in the given register.
+            elif IR == JNE:
+                if self.fl != 0b00000001:
+                    self.pc = self.register[operand_a]
+                else:
+                    self.pc += 2
             else:
                 print(f"Unknown instruction!!{self.ram[self.pc]} ")
                 sys.exit(1)
 
-
-# RUN in terminal as:-----------------
-# python3 ls8.py examples/print8.ls8
-# prints: 8
-# python3 ls8.py examples/mult.ls8
-# prints: 72
-# --------------------------------------
+#  Run code in terminal as:
+#  python3 ls8.py sctest.ls8
